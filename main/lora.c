@@ -3,6 +3,27 @@
 #include <stdio.h>
 #include "lora.h"
 
+// Packet history used for deduplication of packets if by chance any relay nodes see each other
+static lora_header_t s_lora_packet_history[LORA_DUPLICATE_HISTORY_SIZE];
+static uint8_t s_lora_next_history_insert = 0;
+
+uint8_t lora_packet_is_duplicate(lora_header_t header) {
+  for(int i = 0; i < LORA_DUPLICATE_HISTORY_SIZE; i++) {
+    if(s_lora_packet_history[i].message_id == header.message_id && s_lora_packet_history[i].node_id == header.node_id) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+void lora_add_to_history(lora_header_t header) {
+  if(s_lora_next_history_insert >= LORA_DUPLICATE_HISTORY_SIZE) {
+    s_lora_next_history_insert = 0;
+  };
+
+  s_lora_packet_history[s_lora_next_history_insert++] = header;
+}
+
 esp_err_t lora_initialize_radio() {
   // Initializes the driver code
   // which facilitates communication
